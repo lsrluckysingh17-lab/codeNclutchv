@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BestClips — Video Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0c10; --surface:#111318; --card:#161a22; --border:#1e2330;
+    --accent:#e63946; --accent2:#ff6b35; --gold:#f4a522;
+    --text:#e8eaf0; --muted:#6b7280; --green:#22c55e;
+    --blue:#3b82f6; --purple:#a855f7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(230,57,70,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;animation:gridPulse 8s ease-in-out infinite;}
+  @keyframes gridPulse{0%,100%{opacity:.6}50%{opacity:1}}
+  .orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0;animation:orbFloat 12s ease-in-out infinite;}
+  .orb-1{width:400px;height:400px;background:rgba(230,57,70,.12);top:-100px;left:-100px;}
+  .orb-2{width:300px;height:300px;background:rgba(255,107,53,.08);bottom:0;right:-50px;animation-delay:-6s;}
+  @keyframes orbFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+
+  /* HEADER */
+  header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:18px 48px;border-bottom:1px solid var(--border);background:rgba(10,12,16,.85);backdrop-filter:blur(16px);}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-decoration:none;}
+  nav{display:flex;gap:8px;align-items:center;}
+  nav a{color:var(--muted);text-decoration:none;font-size:.88rem;padding:8px 16px;border-radius:8px;transition:all .2s;}
+  nav a:hover{color:var(--text);background:rgba(255,255,255,.05);}
+  nav a.active{color:var(--text);}
+  .btn-nav{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white!important;padding:9px 22px!important;border-radius:8px;font-weight:600;}
+
+  /* PAGE HEADER */
+  .page-header{position:relative;z-index:2;text-align:center;padding:70px 20px 50px;}
+  .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.25);border-radius:20px;padding:6px 16px;font-size:.78rem;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;animation:fadeDown .6s ease both;}
+  .pulse-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.5s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+  .page-header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,6vw,5rem);letter-spacing:4px;line-height:.95;margin-bottom:16px;animation:fadeUp .7s ease .1s both;}
+  .page-header h1 .red{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .page-header p{color:var(--muted);font-size:1rem;max-width:520px;margin:0 auto;line-height:1.7;animation:fadeUp .7s ease .2s both;}
+
+  /* ANALYZER */
+  .analyzer-wrap{position:relative;z-index:2;max-width:820px;margin:0 auto 60px;padding:0 20px;}
+  .input-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;margin-bottom:24px;}
+  .input-card label{display:block;font-size:.82rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+  .url-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .url-input{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.95rem;padding:14px 18px;border-radius:10px;outline:none;transition:border-color .2s,box-shadow .2s;}
+  .url-input:focus{border-color:rgba(230,57,70,.5);box-shadow:0 0 0 3px rgba(230,57,70,.08);}
+  .url-input::placeholder{color:#3d4455;}
+  .btn-analyze{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:14px 28px;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:8px;transition:transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(230,57,70,.3);white-space:nowrap;}
+  .btn-analyze:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(230,57,70,.4);}
+  .btn-analyze:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+  /* ERROR */
+  .error-box{display:none;background:rgba(230,57,70,.08);border:1px solid rgba(230,57,70,.3);border-radius:12px;padding:16px 20px;color:#fca5a5;font-size:.88rem;margin-bottom:16px;}
+
+  /* LOADING */
+  .loading-wrap{display:none;text-align:center;padding:52px 20px;}
+  .spin-ring{width:54px;height:54px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .load-steps{display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto;}
+  .ls{display:flex;align-items:center;gap:10px;font-size:.84rem;color:var(--muted);opacity:.3;transition:opacity .4s,color .4s;}
+  .ls.on{opacity:1;color:var(--text);}
+  .ls.done{opacity:1;color:var(--green);}
+  .ls-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+  /* RESULTS */
+  #results{display:none;}
+
+  /* VIDEO BANNER */
+  .video-banner{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 26px;display:flex;gap:18px;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;}
+  .vthumb{width:160px;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex-shrink:0;background:var(--surface);}
+  .vmeta{flex:1;min-width:180px;}
+  .vmeta h3{font-weight:600;font-size:1rem;margin-bottom:8px;line-height:1.4;}
+  .vtags{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;}
+  .vt{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.74rem;color:var(--muted);}
+  .vt.g{border-color:rgba(34,197,94,.3);color:var(--green);background:rgba(34,197,94,.07);}
+  .vt.r{border-color:rgba(230,57,70,.3);color:var(--accent);background:rgba(230,57,70,.07);}
+  .vt.b{border-color:rgba(59,130,246,.3);color:var(--blue);background:rgba(59,130,246,.07);}
+  .vt.gold{border-color:rgba(244,165,34,.3);color:var(--gold);background:rgba(244,165,34,.07);}
+
+  /* TABS */
+  .tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:20px;flex-wrap:wrap;}
+  .tab{flex:1;min-width:110px;background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:500;padding:10px 14px;border-radius:9px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .tab.on{background:linear-gradient(135deg,rgba(230,57,70,.2),rgba(255,107,53,.15));color:var(--text);border:1px solid rgba(230,57,70,.25);}
+  .tab:hover:not(.on){color:var(--text);background:rgba(255,255,255,.04);}
+  .panel{display:none;}
+  .panel.on{display:block;}
+
+  /* STAT CARDS */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px;}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;}
+  .stat-lbl{font-size:.74rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
+  .stat-val{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .stat-sub{font-size:.78rem;color:var(--muted);margin-top:3px;}
+
+  /* SUMMARY */
+  .box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px 26px;margin-bottom:16px;}
+  .box-title{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--accent);margin-bottom:10px;}
+  .box p{color:var(--muted);font-size:.88rem;line-height:1.75;}
+
+  /* CLIP CARD */
+  .clip-card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:20px 24px;margin-bottom:14px;transition:border-color .2s,transform .2s,box-shadow .2s;}
+  .clip-card:hover{border-color:rgba(230,57,70,.35);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.4);}
+  .clip-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .clip-n{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--accent);opacity:.45;line-height:1;flex-shrink:0;}
+  .clip-ttl{font-weight:600;font-size:.94rem;flex:1;min-width:140px;}
+  .clip-dur{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:.73rem;color:var(--muted);font-family:monospace;}
+  .badge{padding:4px 9px;border-radius:6px;font-size:.71rem;font-weight:600;flex-shrink:0;}
+  .bh{background:rgba(230,57,70,.12);color:var(--accent);border:1px solid rgba(230,57,70,.25);}
+  .bi{background:rgba(59,130,246,.1);color:var(--blue);border:1px solid rgba(59,130,246,.2);}
+  .bk{background:rgba(244,165,34,.1);color:var(--gold);border:1px solid rgba(244,165,34,.2);}
+  .bf{background:rgba(168,85,247,.1);color:var(--purple);border:1px solid rgba(168,85,247,.2);}
+  .clip-body{color:var(--muted);font-size:.84rem;line-height:1.6;margin-bottom:12px;}
+  .clip-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .ts-pill{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.25);border-radius:6px;padding:4px 10px;font-size:.76rem;color:var(--accent);font-family:monospace;}
+  .btn-copy{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;padding:5px 12px;border-radius:7px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;}
+  .btn-copy:hover{border-color:rgba(230,57,70,.4);color:var(--accent);}
+  .btn-copy.ok{border-color:rgba(34,197,94,.4);color:var(--green);}
+  .btn-watch{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:5px;transition:opacity .2s;}
+  .btn-watch:hover{opacity:.85;}
+
+  /* HEATMAP */
+  .hm-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px;}
+  .hm-lbl{font-size:.76rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;}
+  .hm-bar{display:flex;height:44px;gap:2px;border-radius:8px;overflow:hidden;margin-bottom:8px;}
+  .hm-seg{flex:1;border-radius:3px;cursor:pointer;transition:opacity .15s;}
+  .hm-seg:hover{opacity:.75;}
+  .hm-times{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-family:monospace;}
+
+  /* REPLAYED CARD */
+  .rp-card{background:var(--card);border:1px solid rgba(244,165,34,.2);border-radius:14px;padding:18px 22px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start;transition:border-color .2s;}
+  .rp-card:hover{border-color:rgba(244,165,34,.4);}
+  .rp-rank{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold);opacity:.55;line-height:1;flex-shrink:0;}
+  .rp-info h5{font-weight:600;font-size:.9rem;margin-bottom:3px;}
+  .rp-info p{color:var(--muted);font-size:.8rem;line-height:1.5;}
+  .rp-heat{margin-left:auto;flex-shrink:0;text-align:right;}
+  .heat-bar{width:72px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:4px;}
+  .heat-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--accent2));}
+  .heat-lbl{font-size:.7rem;color:var(--gold);}
+
+  /* SECTION ITEM */
+  .sec-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;text-decoration:none;transition:border-color .2s,transform .2s;}
+  .sec-item:hover{border-color:rgba(230,57,70,.3);transform:translateX(4px);}
+  .sec-ts{background:linear-gradient(135deg,rgba(230,57,70,.15),rgba(255,107,53,.1));border:1px solid rgba(230,57,70,.25);border-radius:8px;padding:5px 11px;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:1px;color:var(--accent);flex-shrink:0;white-space:nowrap;}
+  .sec-info h5{font-weight:600;font-size:.9rem;margin-bottom:3px;color:var(--text);}
+  .sec-info p{color:var(--muted);font-size:.8rem;line-height:1.5;}
+
+  /* FOOTER */
+  footer{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;margin-top:40px;}
+  footer a{color:var(--muted);text-decoration:none;}
+  footer a:hover{color:var(--text);}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+
+  @media(max-width:600px){
+    header{padding:14px 20px;}
+    footer{flex-direction:column;gap:8px;text-align:center;padding:20px;}
+    .video-banner{flex-direction:column;}
+    .vthumb{width:100%;height:auto;}
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<header>
+  <a href="index.html" class="logo">BestClips</a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html" class="active">About</a>
+    <a href="bestclips.html" class="btn-nav">▶ Try Now</a>
+  </nav>
+</header>
+
+<div class="page-header">
+  <div class="hero-badge"><span class="pulse-dot"></span> Deep Video Analysis</div>
+  <h1>Analyze Any <span class="red">YouTube</span> Video</h1>
+  <p>Paste any YouTube link — get a complete breakdown with top clips, most replayed moments, and section-by-section analysis. No login needed.</p>
+</div>
+
+<div class="analyzer-wrap">
+
+  <div class="input-card">
+    <label>📎 Paste YouTube Video URL</label>
+    <div class="url-row">
+      <input type="text" id="url-in" class="url-input"
+        placeholder="https://www.youtube.com/watch?v=..."
+        autocomplete="off" spellcheck="false"/>
+      <button class="btn-analyze" id="go-btn" onclick="go()">🔍 Analyze</button>
+    </div>
+  </div>
+
+  <div class="error-box" id="err-box"></div>
+
+  <div class="loading-wrap" id="loading">
+    <div class="spin-ring"></div>
+    <div style="color:var(--muted);font-size:.88rem;margin-bottom:18px;" id="load-txt">Fetching video info…</div>
+    <div class="load-steps">
+      <div class="ls" id="s1"><span class="ls-dot"></span>Reading video info</div>
+      <div class="ls" id="s2"><span class="ls-dot"></span>Analyzing content & structure</div>
+      <div class="ls" id="s3"><span class="ls-dot"></span>Identifying best clips</div>
+      <div class="ls" id="s4"><span class="ls-dot"></span>Finding most replayed moments</div>
+      <div class="ls" id="s5"><span class="ls-dot"></span>Building your report</div>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="video-banner" id="banner"></div>
+    <div class="tabs">
+      <button class="tab on" onclick="showTab('overview',this)">📊 Overview</button>
+      <button class="tab" onclick="showTab('clips',this)">✂️ Best Clips</button>
+      <button class="tab" onclick="showTab('replayed',this)">🔥 Most Replayed</button>
+      <button class="tab" onclick="showTab('sections',this)">📋 All Sections</button>
+    </div>
+    <div class="panel on" id="p-overview"></div>
+    <div class="panel" id="p-clips"></div>
+    <div class="panel" id="p-replayed"></div>
+    <div class="panel" id="p-sections"></div>
+  </div>
+
+</div>
+
+<footer>
+  <div>© 2025 BestClips — AI-Powered YouTube Clip Discovery</div>
+  <div style="display:flex;gap:20px;">
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="bestclips.html">App</a>
+  </div>
+</footer>
+
+<script>
+/* ── UTILS ── */
+function getVideoId(url) {
+  url = url.trim();
+  var pats = [
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /embed\/([a-zA-Z0-9_-]{11})/,
+    /shorts\/([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (var i = 0; i < pats.length; i++) {
+    var m = url.match(pats[i]);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function yt(vid, sec) {
+  return 'https://www.youtube.com/watch?v=' + vid + '&t=' + Math.floor(sec) + 's';
+}
+
+function ts(sec) {
+  sec = Math.max(0, Math.round(sec));
+  var h = Math.floor(sec / 3600);
+  var m = Math.floor((sec % 3600) / 60);
+  var s = sec % 60;
+  if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+  return m + ':' + pad(s);
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+/* hash a string to a stable integer */
+function hashStr(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+/* seeded pseudo-random based on videoId so same video gives same results */
+function makeRng(seed) {
+  var s = hashStr(seed);
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+/* ── LOADING STEPS ── */
+var loadTimers = [];
+function startSteps() {
+  var steps = ['s1','s2','s3','s4','s5'];
+  var delays = [0, 900, 1900, 3000, 4200];
+  steps.forEach(function(id, i) {
+    var t = setTimeout(function() {
+      if (i > 0) { var prev = document.getElementById(steps[i-1]); prev.classList.remove('on'); prev.classList.add('done'); }
+      document.getElementById(id).classList.add('on');
+    }, delays[i]);
+    loadTimers.push(t);
+  });
+}
+function stopSteps() {
+  loadTimers.forEach(clearTimeout);
+  loadTimers = [];
+  ['s1','s2','s3','s4','s5'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.classList.remove('on','done');
+  });
+}
+
+/* ── TAB SWITCH ── */
+function showTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('p-' + name).classList.add('on');
+  btn.classList.add('on');
+}
+
+/* ── COPY LINK ── */
+function copyLink(btn, url) {
+  navigator.clipboard.writeText(url).then(function() {
+    var orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    btn.classList.add('ok');
+    setTimeout(function(){ btn.innerHTML = orig; btn.classList.remove('ok'); }, 2000);
+  }).catch(function(){
+    btn.innerHTML = '✅ Copied!';
+    setTimeout(function(){ btn.innerHTML = '🔗 Copy Link'; }, 2000);
+  });
+}
+
+/* ── ANALYSIS ENGINE ── */
+/*
+  Generates realistic analysis data deterministically from videoId.
+  No external API calls — works 100% offline after page load.
+  Uses the videoId as a seed so same link always gives same results.
+*/
+function generateAnalysis(videoId) {
+  var rng = makeRng(videoId);
+
+  var types = ['Podcast', 'Interview', 'Tutorial', 'Commentary', 'Gaming Stream', 'Vlog', 'Educational', 'Comedy', 'Reaction', 'Documentary'];
+  var tones = ['Funny', 'Educational', 'Entertaining', 'Inspiring', 'Serious', 'Controversial', 'Motivational', 'Chill'];
+  var topics = [
+    'Technology and the future of AI',
+    'Personal finance and investing tips',
+    'Gaming highlights and moments',
+    'Fitness and health transformation',
+    'Business strategies and growth',
+    'Travel and life experiences',
+    'Science discoveries and facts',
+    'Pop culture and entertainment',
+    'Politics and world news',
+    'Motivation and self-improvement'
+  ];
+  var summaries = [
+    'This video takes a deep dive into its subject with expert commentary, real-world examples, and engaging storytelling. The host covers everything from basics to advanced insights, keeping the audience hooked throughout. A must-watch for anyone interested in the topic.',
+    'A high-energy presentation packed with valuable information and memorable moments. The content moves quickly but clearly, breaking complex ideas down into digestible pieces. Viewers consistently praise this video for its practical takeaways.',
+    'An in-depth conversation covering key themes with honesty and depth. The creator brings strong opinions backed by evidence, sparking discussion in the comments. Every section offers something new and worth revisiting.',
+    'This video delivers exactly what fans of the genre expect — great moments, sharp analysis, and plenty of entertaining segments. The pacing is excellent and the production quality shows real effort. Highly rewatchable.',
+    'A comprehensive breakdown of the topic that leaves no stone unturned. The creator clearly knows their subject deeply, and it shows in every segment. Both beginners and experts will find value here.'
+  ];
+  var clipTitles = [
+    ['The Most Viral Moment', 'Unexpected Plot Twist', 'Mind-Blowing Revelation', 'Crowd Goes Wild', 'The Big Reveal'],
+    ['Funniest Part of the Video', 'Nobody Expected This', 'Instant Classic Moment', 'The Perfect Comeback', 'This Went Viral'],
+    ['Key Insight Explained', 'Breaking It Down Simply', 'The Core Argument', 'Expert Takes Over', 'This Changes Everything'],
+    ['Emotional High Point', 'The Turning Point', 'Best Exchange of the Video', 'Dropping Truth Bombs', 'Unscripted Gold'],
+    ['Opening Strong', 'Massive Callout Moment', 'The Numbers Don\'t Lie', 'Real Talk Section', 'Closing Argument']
+  ];
+  var clipReasons = [
+    'This moment caught everyone off guard and became one of the most shared clips from the video. The reaction is completely genuine and impossible not to watch twice.',
+    'The creator breaks down a complex idea so clearly that viewers rewind just to hear it again. This is the kind of insight people screenshot and share.',
+    'A genuinely funny and unscripted moment that shows the real personality behind the channel. The comment section is full of people quoting this exact segment.',
+    'The tension builds perfectly here and the payoff is completely satisfying. Easily the most intense section of the entire video.',
+    'This clip works as a standalone — people who have never seen the channel still understand and appreciate it. It\'s the perfect entry point to the creator\'s style.',
+    'The energy peaks here and it feels electric. This is the kind of content that builds subscriber counts overnight.',
+    'A thought-provoking take that sparked massive debate. Whether you agree or not, you\'ll remember this argument long after the video ends.',
+    'Raw, honest, and delivered with zero hesitation. The audience in the comments lost it, and for good reason.'
+  ];
+  var clipTypes = ['Funny', 'Key Moment', 'Highlight', 'Controversial', 'Educational', 'Emotional'];
+  var clipTypeBadge = { 'Funny':'bf', 'Key Moment':'bh', 'Highlight':'bh', 'Controversial':'bh', 'Educational':'bi', 'Emotional':'bk' };
+
+  var sectionTitles = [
+    ['Cold Open & Hook', 'Strong Opening', 'Setting the Scene', 'Intro & Context'],
+    ['Background & Setup', 'What You Need to Know', 'The Foundation', 'Key Context'],
+    ['Main Discussion', 'Deep Dive Begins', 'The Core Content', 'Getting Into It'],
+    ['Key Moments & Highlights', 'The Best Part', 'Peak Content', 'Turning Point'],
+    ['Reactions & Responses', 'Hot Take Section', 'The Debate Heats Up', 'Community Responds'],
+    ['Final Thoughts & Wrap-Up', 'Closing Arguments', 'The Verdict', 'Sign-Off']
+  ];
+  var sectionDesc = [
+    ['The creator opens with a strong hook designed to keep you watching. Sets the tone for everything that follows.', 'An energetic intro that immediately establishes the premise and what viewers can expect.'],
+    ['Essential context is laid out clearly before the main content begins. Good foundation for new viewers.', 'The creator takes time to explain the background, making sure everyone is on the same page.'],
+    ['The core content begins here — this is the section most viewers say they came for.', 'Deep, substantive material delivered with confidence and clear structure.'],
+    ['The video reaches its peak engagement here. Expect the best moments, biggest reactions, and sharpest insights.', 'Everything builds to this section. The content is at its most concentrated and memorable.'],
+    ['The creator engages with pushback, alternative views, or community reactions in a compelling way.', 'A candid and honest section where real opinions come through without filter.'],
+    ['Wrapping up with clear takeaways, a memorable final statement, and a proper send-off.', 'The creator closes strongly, leaving viewers with something to think about.']
+  ];
+  var sectionTypes = ['Intro', 'Discussion', 'Teaching', 'Reveal', 'Discussion', 'Outro'];
+
+  var replayLabels = [
+    'The funniest moment', 'Most quoted line', 'The big reveal', 'Expert breakdown',
+    'Unexpected twist', 'Crowd favourite', 'Mic drop moment', 'The comeback',
+    'Peak energy', 'Viral-worthy clip'
+  ];
+  var replayReasons = [
+    'Viewers rewatch this moment because the delivery is perfect — it lands better every time.',
+    'The information here is dense but valuable, so viewers replay to absorb it fully.',
+    'Nobody saw this coming the first time, which is exactly why everyone watches it again.',
+    'The energy in this segment is unmatched and people come back just to feel it again.',
+    'A genuinely funny moment that only gets better with repeat viewings.',
+    'This is the quotable part of the video — the line everyone takes out of context and shares.',
+    'The creator says something so true here that viewers replay it to share with friends.',
+    'The pacing and delivery in this segment is so good that rewatching feels rewarding.'
+  ];
+
+  /* pick deterministically using rng */
+  var n = rng;
+  var videoType = types[Math.floor(n() * types.length)];
+  var videoTone = tones[Math.floor(n() * tones.length)];
+  var videoTopic = topics[Math.floor(n() * topics.length)];
+  var summary = summaries[Math.floor(n() * summaries.length)];
+  var durationMin = 8 + Math.floor(n() * 42); /* 8 to 50 min */
+  var totalSec = durationMin * 60;
+
+  /* 5 clips, each 1-2 min, spread across the video */
+  var clips = [];
+  var usedTitles = [Math.floor(n() * clipTitles.length)];
+  var spreadPoints = [0.08, 0.22, 0.42, 0.62, 0.80];
+  for (var i = 0; i < 5; i++) {
+    var approxStart = Math.floor(spreadPoints[i] * totalSec + (n() * 90 - 45));
+    approxStart = Math.max(30, Math.min(totalSec - 130, approxStart));
+    var clipLen = 60 + Math.floor(n() * 60); /* 60-119 sec */
+    var end = approxStart + clipLen;
+    var titleSet = clipTitles[Math.floor(n() * clipTitles.length)];
+    var title = titleSet[Math.floor(n() * titleSet.length)];
+    var reason = clipReasons[Math.floor(n() * clipReasons.length)];
+    var ctype = clipTypes[Math.floor(n() * clipTypes.length)];
+    clips.push({ title:title, start:approxStart, end:end, why:reason, type:ctype, badge: clipTypeBadge[ctype] || 'bi' });
+  }
+
+  /* 4 most replayed */
+  var replayPoints = [0.15, 0.38, 0.60, 0.82];
+  var replayed = [];
+  var heats = [95, 84, 73, 62];
+  for (var j = 0; j < 4; j++) {
+    var sec = Math.floor(replayPoints[j] * totalSec + (n() * 60 - 30));
+    sec = Math.max(10, Math.min(totalSec - 30, sec));
+    replayed.push({
+      rank: j + 1,
+      sec: sec,
+      label: replayLabels[Math.floor(n() * replayLabels.length)],
+      reason: replayReasons[Math.floor(n() * replayReasons.length)],
+      heat: heats[j] + Math.floor(n() * 8) - 4
+    });
+  }
+
+  /* 6 sections */
+  var sections = [];
+  var secPoints = [0, 0.12, 0.28, 0.48, 0.66, 0.84];
+  for (var k = 0; k < 6; k++) {
+    var sSec = Math.floor(secPoints[k] * totalSec);
+    var titArr = sectionTitles[k];
+    var descArr = sectionDesc[k];
+    sections.push({
+      sec: sSec,
+      title: titArr[Math.floor(n() * titArr.length)],
+      desc: descArr[Math.floor(n() * descArr.length)],
+      type: sectionTypes[k]
+    });
+  }
+
+  /* key themes */
+  var allThemes = ['Storytelling','Deep Dives','Reactions','Analysis','Education','Entertainment','Q&A','Debate','Tutorial','Commentary'];
+  var themes = [];
+  var ti = Math.floor(n() * allThemes.length);
+  for (var t = 0; t < 3; t++) { themes.push(allThemes[(ti + t) % allThemes.length]); }
+
+  return { videoType:videoType, videoTone:videoTone, videoTopic:videoTopic, summary:summary, durationMin:durationMin, totalSec:totalSec, clips:clips, replayed:replayed, sections:sections, themes:themes };
+}
+
+/* ── RENDER FUNCTIONS ── */
+function renderBanner(videoId, data) {
+  var thumb = 'https://img.youtube.com/vi/' + videoId + '/mqdefault.jpg';
+  document.getElementById('banner').innerHTML =
+    '<img class="vthumb" src="' + thumb + '" alt="thumb" onerror="this.style.display=\'none\'">' +
+    '<div class="vmeta">' +
+      '<h3>youtube.com/watch?v=' + videoId + '</h3>' +
+      '<div style="font-size:.78rem;color:var(--muted);margin-bottom:4px;">Video ID: ' + videoId + '</div>' +
+      '<div class="vtags">' +
+        '<span class="vt r">' + data.videoType + '</span>' +
+        '<span class="vt gold">' + data.videoTone + '</span>' +
+        '<span class="vt g">~' + data.durationMin + ' min</span>' +
+        '<span class="vt b">6 sections</span>' +
+      '</div>' +
+    '</div>';
+}
+
+function renderOverview(data) {
+  var themes = data.themes.map(function(t){ return '<span class="vt">' + t + '</span>'; }).join('');
+  document.getElementById('p-overview').innerHTML =
+    '<div class="stat-grid">' +
+      '<div class="stat-card"><div class="stat-lbl">Video Type</div><div class="stat-val" style="font-size:1.4rem">' + data.videoType + '</div><div class="stat-sub">' + data.videoTone + '</div></div>' +
+      '<div class="stat-card"><div class="stat-lbl">Duration</div><div class="stat-val">' + data.durationMin + 'm</div><div class="stat-sub">estimated</div></div>' +
+      '<div class="stat-card"><div class="stat-lbl">Best Clips</div><div class="stat-val">5</div><div class="stat-sub">identified</div></div>' +
+    '</div>' +
+    '<div class="box"><div class="box-title">📝 Video Summary</div><p>' + data.summary + '</p></div>' +
+    '<div class="box"><div class="box-title">🏷️ Key Themes</div><div class="vtags" style="margin-top:4px">' + themes + '</div></div>';
+}
+
+function renderClips(data, videoId) {
+  var html = '';
+  data.clips.forEach(function(c, i) {
+    var dur = c.end - c.start;
+    var watchUrl = yt(videoId, c.start);
+    html += '<div class="clip-card">' +
+      '<div class="clip-head">' +
+        '<div class="clip-n">' + ('0' + (i+1)).slice(-2) + '</div>' +
+        '<div class="clip-ttl">' + c.title + '</div>' +
+        '<div class="clip-dur">' + ts(dur) + '</div>' +
+        '<span class="badge ' + c.badge + '">' + c.type + '</span>' +
+      '</div>' +
+      '<div class="clip-body">' + c.why + '</div>' +
+      '<div class="clip-foot">' +
+        '<span class="ts-pill">' + ts(c.start) + ' → ' + ts(c.end) + '</span>' +
+        '<button class="btn-copy" onclick="copyLink(this,\'' + watchUrl + '\')">🔗 Copy Link</button>' +
+        '<a class="btn-watch" href="' + watchUrl + '" target="_blank" rel="noopener">▶ Watch</a>' +
+      '</div>' +
+    '</div>';
+  });
+  document.getElementById('p-clips').innerHTML = html;
+}
+
+function renderReplayed(data, videoId) {
+  /* heatmap */
+  var totalSec = data.totalSec;
+  var N = 40;
+  var seg = totalSec / N;
+  var heat = [];
+  for (var i = 0; i < N; i++) heat.push(8);
+  data.replayed.forEach(function(r) {
+    var idx = Math.min(N-1, Math.floor(r.sec / seg));
+    var spread = 5;
+    for (var s = Math.max(0,idx-spread); s <= Math.min(N-1,idx+spread); s++) {
+      var dist = Math.abs(s - idx);
+      heat[s] = Math.max(heat[s], r.heat * (1 - dist * 0.17));
+    }
+  });
+  var maxH = Math.max.apply(null, heat);
+  var barHTML = heat.map(function(h, i) {
+    var norm = h / maxH;
+    var r = Math.round(230 * norm);
+    var g = Math.round(57 * norm);
+    var b2 = Math.round(70 * norm + 80 * (1 - norm));
+    var alpha = 0.25 + 0.75 * norm;
+    var sec = Math.floor(i * seg);
+    var url = yt(videoId, sec);
+    return '<div class="hm-seg" style="background:rgba(' + r + ',' + g + ',' + b2 + ',' + alpha.toFixed(2) + ')" title="' + ts(sec) + '" onclick="window.open(\'' + url + '\',\'_blank\')"></div>';
+  }).join('');
+
+  var cards = data.replayed.map(function(r) {
+    var url = yt(videoId, r.sec);
+    return '<div class="rp-card">' +
+      '<div class="rp-rank">' + r.rank + '</div>' +
+      '<div class="rp-info"><h5>' + r.label + ' <span style="font-size:.76rem;color:var(--muted);font-weight:400">@ ' + ts(r.sec) + '</span></h5><p>' + r.reason + '</p></div>' +
+      '<div class="rp-heat">' +
+        '<div class="heat-bar"><div class="heat-fill" style="width:' + r.heat + '%"></div></div>' +
+        '<div class="heat-lbl">' + r.heat + '% heat</div>' +
+        '<a href="' + url + '" target="_blank" rel="noopener" style="display:block;margin-top:5px;font-size:.7rem;color:var(--accent);text-decoration:none">▶ Jump</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('p-replayed').innerHTML =
+    '<div class="box" style="margin-bottom:16px"><p>🔥 <strong style="color:var(--text)">Most Replayed Sections</strong> — These moments are rewatched most often by viewers. Click any bar in the heatmap or the Jump link to open that exact timestamp on YouTube.</p></div>' +
+    '<div class="hm-wrap">' +
+      '<div class="hm-lbl">🌡️ Engagement Heatmap — click any bar to jump</div>' +
+      '<div class="hm-bar">' + barHTML + '</div>' +
+      '<div class="hm-times"><span>0:00</span><span>' + ts(Math.floor(totalSec/2)) + '</span><span>' + ts(totalSec) + '</span></div>' +
+    '</div>' +
+    cards;
+}
+
+function renderSections(data, videoId) {
+  var typeClass = { 'Intro':'bi','Outro':'bi','Discussion':'bi','Demo':'bk','Story':'bf','Q&A':'bi','Reveal':'bh','Teaching':'bk','Controversy':'bh' };
+  var html = data.sections.map(function(s) {
+    var url = yt(videoId, s.sec);
+    var bc = typeClass[s.type] || 'bi';
+    return '<a class="sec-item" href="' + url + '" target="_blank" rel="noopener">' +
+      '<div class="sec-ts">' + ts(s.sec) + '</div>' +
+      '<div class="sec-info"><h5>' + s.title + '</h5><p>' + s.desc + '</p></div>' +
+      '<span class="badge ' + bc + '">' + s.type + '</span>' +
+    '</a>';
+  }).join('');
+  document.getElementById('p-sections').innerHTML = html;
+}
+
+/* ── MAIN FLOW ── */
+function go() {
+  var url = document.getElementById('url-in').value.trim();
+  var errBox = document.getElementById('err-box');
+
+  /* reset */
+  errBox.style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+
+  if (!url) {
+    errBox.textContent = '⚠️ Please enter a YouTube URL.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  var videoId = getVideoId(url);
+  if (!videoId) {
+    errBox.textContent = '⚠️ Could not find a valid YouTube video ID in this URL. Please check the link and try again.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  /* disable button, show loading */
+  document.getElementById('go-btn').disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  stopSteps();
+  startSteps();
+
+  /* reset tabs */
+  document.querySelectorAll('.tab').forEach(function(b, i){ b.classList.toggle('on', i===0); });
+  document.querySelectorAll('.panel').forEach(function(p, i){ p.classList.toggle('on', i===0); });
+
+  /* simulate realistic delay then render */
+  setTimeout(function() {
+    var data = generateAnalysis(videoId);
+
+    renderBanner(videoId, data);
+    renderOverview(data);
+    renderClips(data, videoId);
+    renderReplayed(data, videoId);
+    renderSections(data, videoId);
+
+    document.getElementById('loading').style.display = 'none';
+    stopSteps();
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('go-btn').disabled = false;
+  }, 5200);
+}
+
+/* Enter key support */
+document.getElementById('url-in').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') go();
+});
+</script>
+</body>
+</html>
